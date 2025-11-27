@@ -34,10 +34,10 @@ kotlin {
 
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
-        outputModuleName.set("attoWallet")
+        outputModuleName.set("attoCashWallet")
         browser {
             commonWebpackConfig {
-                outputFileName = "attoWallet.js"
+                outputFileName = "attoCashWallet.js"
                 devServer = (devServer ?: KotlinWebpackConfig.DevServer()).apply {
                     static = (static ?: mutableListOf()).apply {
                         // Serve sources to debug inside browser
@@ -214,7 +214,7 @@ compose.desktop {
 
         nativeDistributions {
             targetFormats(TargetFormat.Deb, TargetFormat.Msi, TargetFormat.Dmg, TargetFormat.Rpm)
-            packageName = "AttoWallet"
+            packageName = "AttoCashWallet"
             packageVersion = "1.0.10"
             modules("jdk.charsets")
 

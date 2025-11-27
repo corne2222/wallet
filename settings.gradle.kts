@@ -1,4 +1,4 @@
-rootProject.name = "AttoWallet"
+rootProject.name = "AttoCashWallet"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 pluginManagement {

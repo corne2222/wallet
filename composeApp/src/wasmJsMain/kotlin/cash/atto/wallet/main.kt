@@ -14,7 +14,7 @@ fun main() {
 
     startKoin { modules(viewModelModule) }
 
-    ComposeViewport(viewportContainerId = "AttoWallet") {
+    ComposeViewport(viewportContainerId = "AttoCashWallet") {
         AttoAppWeb(navComponent)
     }
 }
