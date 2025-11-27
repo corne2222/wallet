@@ -2,6 +2,7 @@ package cash.atto.wallet.repository
 
 import cash.atto.commons.AttoMnemonic
 import cash.atto.wallet.PlatformType
+import cash.atto.wallet.config.WalletNetworkConfig
 import cash.atto.wallet.datasource.PasswordDataSource
 import cash.atto.wallet.datasource.SeedDataSource
 import cash.atto.wallet.datasource.TempSeedDataSource
@@ -21,9 +22,10 @@ class AppStateRepository(
     private val seedDataSource: SeedDataSource,
     private val tempSeedDataSource: TempSeedDataSource,
     private val passwordDataSource: PasswordDataSource,
-    private val seedAESInteractor: SeedAESInteractor
+    private val seedAESInteractor: SeedAESInteractor,
+    private val networkConfig: WalletNetworkConfig,
 ) {
-    private val _state = MutableStateFlow(AppState.DEFAULT)
+    private val _state = MutableStateFlow(AppState.default(networkConfig))
     val state = _state.asStateFlow()
 
     private val sessionScope = CoroutineScope(Dispatchers.Default)
