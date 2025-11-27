@@ -105,7 +105,7 @@ fun TransactionItemPreview() {
         TransactionItem(
             TransactionUiState(
                 type = TransactionType.SEND,
-                amount = "A small amount",
+                amount = "A little Atto Cash",
                 source = "someone",
                 timestamp = Clock.System.now(),
                 height = AttoHeight(0UL)
