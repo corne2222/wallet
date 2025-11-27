@@ -4,14 +4,21 @@ package cash.atto.wallet.ui
 private external fun currentLocale(): String
 
 @JsFun("""
-    (value, locale) => new Intl.NumberFormat(locale, {
-        maximumFractionDigits: 2,
-        minimumFractionDigits: 0
+    (value, locale, maxFractionDigits, minFractionDigits) => new Intl.NumberFormat(locale, {
+        maximumFractionDigits: maxFractionDigits,
+        minimumFractionDigits: minFractionDigits
     }).format(value)
 """)
-private external fun intlFormat(value: Double, locale: String): String
+private external fun intlFormat(
+    value: Double,
+    locale: String,
+    maxFractionDigits: Int,
+    minFractionDigits: Int
+): String
 
 actual object AttoLocalizedFormatter {
     actual fun format(value: String): String =
-        value.toDoubleOrNull()?.let { intlFormat(it, currentLocale()) } ?: "…"
+        value.toDoubleOrNull()?.let {
+            intlFormat(it, currentLocale(), ATTO_CASH_DECIMALS, 0)
+        } ?: "…"
 }
