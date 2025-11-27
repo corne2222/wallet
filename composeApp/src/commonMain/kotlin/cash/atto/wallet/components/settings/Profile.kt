@@ -63,7 +63,7 @@ fun ProfileExtended(
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             imageVector = vectorResource(Res.drawable.ic_atto),
-            contentDescription = "Atto",
+            contentDescription = "Atto Cash",
             modifier = Modifier.size(28.dp, 28.dp),
             tint = MaterialTheme.colorScheme.primary
         )

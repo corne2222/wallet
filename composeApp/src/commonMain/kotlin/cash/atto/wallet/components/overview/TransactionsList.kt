@@ -119,14 +119,14 @@ fun TransactionsListPreview() {
                 transactions = listOf(
                     TransactionUiState(
                         type = TransactionType.SEND,
-                        amount = "A little Atto",
+                        amount = "A small amount",
                         source = "someone",
                         timestamp = Clock.System.now(),
                         height = AttoHeight(1UL),
                     ),
                     TransactionUiState(
                         type = TransactionType.RECEIVE,
-                        amount = "A lot of Atto",
+                        amount = "A large amount",
                         source = "someone",
                         timestamp = Clock.System.now(),
                         height = AttoHeight(0UL),

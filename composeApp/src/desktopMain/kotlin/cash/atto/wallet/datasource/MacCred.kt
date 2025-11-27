@@ -86,7 +86,8 @@ class MacSecretSchema(key: String) : Structure() {
 
 
 class MacCred() {
-    val serviceName = "Atto Wallet"
+    private val primaryServiceName = "Atto Cash Wallet"
+    private val legacyServiceNames = listOf("Atto Wallet")
 
     private val seedSecretSchema = SecretSchema(SEED_SCHEMA_KEY)
     private val passwordSecretSchema = SecretSchema(PASSWORD_SCHEMA_KEY)
@@ -104,8 +105,8 @@ class MacCred() {
         val passwordData = password.toByteArray(StandardCharsets.UTF_8)
         val result = Security.INSTANCE.SecKeychainAddGenericPassword(
             null,
-            serviceName.length,
-            serviceName,
+            primaryServiceName.length,
+            primaryServiceName,
             schema.name.length,
             schema.name,
             passwordData.size,
@@ -119,6 +120,42 @@ class MacCred() {
     }
 
     fun get(schema: SecretSchema): String? {
+        getForService(schema, primaryServiceName)?.let { return it }
+
+        legacyServiceNames.forEach { legacyName ->
+            val legacyValue = getForService(schema, legacyName)
+            if (legacyValue != null) {
+                val migrated = migrateCredential(schema, legacyValue)
+                if (migrated) {
+                    deleteForService(schema, legacyName, throwIfMissing = false)
+                }
+                return legacyValue
+            }
+        }
+
+        return null
+    }
+
+    fun delete(schema: SecretSchema): Boolean {
+        return try {
+            val deletedPrimary = deleteForService(schema, primaryServiceName, throwIfMissing = true)
+            legacyServiceNames.forEach { legacyName ->
+                deleteForService(schema, legacyName, throwIfMissing = false)
+            }
+            deletedPrimary
+        } catch (primaryException: IllegalStateException) {
+            val legacyDeleted = legacyServiceNames.any { legacyName ->
+                deleteForService(schema, legacyName, throwIfMissing = false)
+            }
+
+            if (!legacyDeleted) {
+                throw primaryException
+            }
+            true
+        }
+    }
+
+    private fun getForService(schema: SecretSchema, serviceName: String): String? {
         val passwordLength = IntArray(1)
         val passwordData = PointerByReference()
         val itemRef = PointerByReference()
@@ -143,7 +180,11 @@ class MacCred() {
         }
     }
 
-    fun delete(schema: SecretSchema): Boolean {
+    private fun deleteForService(
+        schema: SecretSchema,
+        serviceName: String,
+        throwIfMissing: Boolean
+    ): Boolean {
         val itemRef = PointerByReference()
         val result = Security.INSTANCE.SecKeychainFindGenericPassword(
             null,
@@ -157,14 +198,27 @@ class MacCred() {
         )
 
         if (result != 0) {
-            throw IllegalStateException("Failed to find item to delete. Error code: $result")
+            if (throwIfMissing) {
+                throw IllegalStateException("Failed to find item to delete. Error code: $result")
+            }
+            return false
         }
 
         val deleteResult = Security.INSTANCE.SecKeychainItemDelete(itemRef.value)
         if (deleteResult != 0) {
-            throw IllegalStateException("Failed to delete password. Error code: $deleteResult")
+            if (throwIfMissing) {
+                throw IllegalStateException("Failed to delete password. Error code: $deleteResult")
+            }
+            return false
         }
         return true
+    }
+
+    private fun migrateCredential(schema: SecretSchema, password: String): Boolean = try {
+        store(schema, password)
+        true
+    } catch (_: Exception) {
+        false
     }
 
     companion object {

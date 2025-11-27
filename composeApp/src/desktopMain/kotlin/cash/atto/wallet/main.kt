@@ -23,7 +23,7 @@ fun main() {
         val windowState = rememberWindowState()
         Window(
             onCloseRequest = ::exitApplication,
-            title = "Atto Wallet",
+            title = "Atto Cash Wallet",
         ) {
             window.minimumSize = Dimension(
                 1344,
