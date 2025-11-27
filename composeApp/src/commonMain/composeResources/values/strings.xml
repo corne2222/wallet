@@ -7,7 +7,7 @@
 
     <!-- copyright -->
     <string name="copyright_link">https://atto.cash/</string>
-    <string name="copyright_title">Copyright © 2025 Atto B.V.</string>
+    <string name="copyright_title">Copyright © 2025 Atto Cash B.V.</string>
 
     <!-- logout -->
     <string name="logout_cancel">CANCEL</string>
@@ -16,7 +16,7 @@
     <string name="logout_title">WARNING</string>
 
     <!-- main -->
-    <string name="main_title">Atto</string>
+    <string name="main_title">Atto Cash</string>
 
     <!-- desktop main navigation destinations -->
     <string name="main_nav_overview">Overview</string>
@@ -25,9 +25,9 @@
     <string name="main_nav_settings">Settings</string>
 
     <!-- overview -->
-    <string name="overview_hint">Welcome to Atto. Once you receive some, transactions will show up like this:</string>
-    <string name="overview_hint_amount_from">A lot of Atto</string>
-    <string name="overview_hint_amount_to">A little Atto</string>
+    <string name="overview_hint">Welcome to Atto Cash. Once you receive some, transactions will show up like this:</string>
+    <string name="overview_hint_amount_from">A large amount</string>
+    <string name="overview_hint_amount_to">A small amount</string>
     <string name="overview_hint_destination">someone</string>
     <string name="overview_hint_source">someone</string>
     <string name="overview_hint_type_from">Received</string>
@@ -48,7 +48,7 @@
     <string name="password_confirm_hint">Confirm the password</string>
     <string name="password_create_hint">Create a password</string>
     <string name="password_create_next">Next</string>
-    <string name="password_create_text">This password will be required to open Atto.</string>
+    <string name="password_create_text">This password will be required to open your wallet.</string>
     <string name="password_create_title">Create a password</string>
     <string name="password_enter_hint">Enter password</string>
     <string name="password_enter_submit">Submit</string>
@@ -61,7 +61,7 @@
     <string name="representative_change">Change</string>
     <string name="representative_change_title">Change representative</string>
     <string name="representative_close">Close</string>
-    <string name="representative_error_address">Enter a valid Atto address</string>
+    <string name="representative_error_address">Enter a valid Atto Cash address</string>
     <string name="representative_subtitle">Currently Represented By</string>
     <string name="representative_title">Representative</string>
 
@@ -85,8 +85,8 @@
     <string name="send_confirm_cancel">Cancel</string>
     <string name="send_confirm_sending">SENDING</string>
     <string name="send_confirm_to">TO</string>
-    <string name="send_error_address">Enter a valid Atto address</string>
-    <string name="send_error_amount">Specify a valid amount of Atto</string>
+    <string name="send_error_address">Enter a valid Atto Cash address</string>
+    <string name="send_error_amount">Specify a valid amount of Atto Cash</string>
     <string name="send_failure_title">WE COULDN'T SEND</string>
     <string name="send_failure_to">TO</string>
     <string name="send_from_address_hint">Enter Address</string>
@@ -110,5 +110,5 @@
     <string name="welcome_create_wallet">New Wallet</string>
     <string name="welcome_import_wallet">Import Wallet</string>
     <string name="welcome_message">To begin, you may create a new wallet or import an existing one.</string>
-    <string name="welcome_title">Welcome to Atto</string>
+    <string name="welcome_title">Welcome to Atto Cash</string>
 </resources>

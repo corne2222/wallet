@@ -20,33 +20,71 @@ class SeedDataSourceWindows : SeedDataSourceDesktopImpl {
     }
 
     override suspend fun setSeed(seed: String) {
-        winCred.setCredential(
-            target = APP_NAME,
-            userName = USERNAME,
-            password = seed
-        )
-
+        writeCredential(APP_NAME, seed)
+        removeLegacySeed()
         getSeed()
     }
 
     override suspend fun clearSeed() {
-        winCred.deleteCredential(APP_NAME)
+        try {
+            winCred.deleteCredential(APP_NAME)
+        } catch (primaryException: Exception) {
+            val legacyDeleted = try {
+                winCred.deleteCredential(LEGACY_APP_NAME)
+                true
+            } catch (_: Exception) {
+                false
+            }
+
+            if (!legacyDeleted) {
+                throw primaryException
+            }
+        }
+
+        removeLegacySeed()
         getSeed()
     }
 
     private suspend fun getSeed() {
+        val currentSeed = readCredential(APP_NAME) ?: readCredential(LEGACY_APP_NAME)?.also {
+            migrateSeed(it)
+        }
+
+        _seedChannel.send(currentSeed)
+    }
+
+    private fun readCredential(target: String): String? = try {
+        winCred.getCredential(target).ifEmpty { null }
+    } catch (ex: Exception) {
+        null
+    }
+
+    private fun writeCredential(target: String, value: String) {
+        winCred.setCredential(
+            target = target,
+            userName = USERNAME,
+            password = value
+        )
+    }
+
+    private fun migrateSeed(value: String) {
         try {
-            _seedChannel.send(
-                winCred.getCredential(APP_NAME)
-                    .ifEmpty { null }
-            )
-        } catch (ex: Exception) {
-            _seedChannel.send(null)
+            writeCredential(APP_NAME, value)
+            removeLegacySeed()
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun removeLegacySeed() {
+        try {
+            winCred.deleteCredential(LEGACY_APP_NAME)
+        } catch (_: Exception) {
         }
     }
 
     companion object {
-        private const val APP_NAME = "Atto Wallet"
+        private const val APP_NAME = "Atto Cash Wallet"
+        private const val LEGACY_APP_NAME = "Atto Wallet"
         private const val USERNAME = "Main Account"
     }
 }

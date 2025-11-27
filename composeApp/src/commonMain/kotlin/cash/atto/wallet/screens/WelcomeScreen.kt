@@ -88,7 +88,7 @@ fun WelcomeScreenCompact(
 
         Image(
             imageVector = vectorResource(Res.drawable.ic_atto),
-            contentDescription = "Atto Wallet main icon"
+            contentDescription = "Atto Cash Wallet main icon"
         )
 
         Text(

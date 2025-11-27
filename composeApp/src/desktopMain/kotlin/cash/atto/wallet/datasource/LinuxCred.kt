@@ -108,7 +108,7 @@ class LinuxCred {
         val result = LibSecret.INSTANCE.secret_password_store_sync(
             schema.pointer,
             "default",
-            "Atto Wallet",
+            "Atto Cash Wallet",
             seed,
             null,
             error,
