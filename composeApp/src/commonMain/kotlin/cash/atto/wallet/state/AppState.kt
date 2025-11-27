@@ -4,13 +4,16 @@ import cash.atto.commons.AttoMnemonic
 import cash.atto.commons.toPrivateKey
 import cash.atto.commons.toPublicKey
 import cash.atto.commons.toSeed
+import cash.atto.wallet.config.WalletNetworkConfig
+import cash.atto.wallet.config.WalletNetworkDefaults
 
 data class AppState(
     val encryptedSeed: String?,
     val mnemonic: AttoMnemonic?,
     val authState: AuthState,
     val password: String?,
-    val index: UInt = 0U
+    val index: UInt = 0U,
+    val network: WalletNetworkConfig,
 ) {
     suspend fun getSeed() = mnemonic?.toSeed()
     suspend fun getPrivateKey() = getSeed()?.toPrivateKey(index)
@@ -26,11 +29,12 @@ data class AppState(
     }
 
     companion object {
-        val DEFAULT = AppState(
+        fun default(network: WalletNetworkConfig = WalletNetworkDefaults.ATTO) = AppState(
             encryptedSeed = null,
             mnemonic = null,
             authState = AuthState.UNKNOWN,
-            password = null
+            password = null,
+            network = network
         )
     }
 }
