@@ -17,6 +17,7 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/android-build.yaml
+    secrets: inherit
 
   deploy-web:
     environment:
