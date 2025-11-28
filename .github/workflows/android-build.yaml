@@ -6,33 +6,12 @@ on:
       - main
     tags:
       - 'v*'
-  workflow_dispatch:
-  workflow_call:
-    secrets:
-      ANDROID_KEYSTORE_BASE64:
-        required: false
-      ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD:
-        required: false
-      ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS:
-        required: false
-      ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD:
-        required: false
 
 jobs:
   android-build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    secrets: inherit
-    outputs:
-      apk-path: ${{ steps.upload-apk.outputs.artifact-path }}
-      apk-url: ${{ steps.upload-apk.outputs.artifact-url }}
-      aab-path: ${{ steps.upload-aab.outputs.artifact-path }}
-      aab-url: ${{ steps.upload-aab.outputs.artifact-url }}
-      mapping-path: ${{ steps.upload-mapping.outputs.artifact-path }}
-      mapping-url: ${{ steps.upload-mapping.outputs.artifact-url }}
-      test-reports-path: ${{ steps.upload-test-reports.outputs.artifact-path }}
-      test-reports-url: ${{ steps.upload-test-reports.outputs.artifact-url }}
     steps:
       - uses: actions/checkout@v5
 
@@ -59,24 +38,15 @@ jobs:
 
       - name: Decode Keystore
         run: |
-          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > composeApp/release.keystore
-            echo "Keystore decoded successfully"
-          else
-            echo "ANDROID_KEYSTORE_BASE64 not provided, skipping keystore decode"
-          fi
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > composeApp/release.keystore
 
       - name: Export Signing Environment Variables
         run: |
-          if [ -n "${{ secrets.ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD }}" ]; then
-            echo "ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD }}" >> $GITHUB_ENV
-          fi
-          if [ -n "${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS }}" ]; then
-            echo "ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS }}" >> $GITHUB_ENV
-          fi
-          if [ -n "${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD }}" ]; then
-            echo "ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD }}" >> $GITHUB_ENV
-          fi
+          cat <<'EOF' >> $GITHUB_ENV
+          ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD }}
+          EOF
 
       - name: Run Android Build and Tests
         run: |

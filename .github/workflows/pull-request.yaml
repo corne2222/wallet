@@ -5,9 +5,183 @@ on:
 
 jobs:
   build:
-    uses: ./.github/workflows/build.yaml
+    strategy:
+      matrix:
+        include:
+          - target: linux
+            type: desktop
+            runner: ubuntu-latest
+            package_task: packageDeb
+            artifact_directory: composeApp/build/compose/binaries/main/deb
+            artifact_extension: deb
+          - target: macos
+            type: desktop
+            runner: macos-latest
+            package_task: packageDmg
+            artifact_directory: composeApp/build/compose/binaries/main/dmg
+            artifact_extension: dmg
+          - target: windows
+            type: desktop
+            runner: windows-latest
+            package_task: packageMsi
+            artifact_directory: composeApp/build/compose/binaries/main/msi
+            artifact_extension: msi
+          - target: web
+            type: web
+            runner: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - run: ./gradlew allTests
+
+      - name: Build desktop package
+        if: matrix.type == 'desktop'
+        run: ./gradlew ${{ matrix.package_task }}
+
+      - name: Rename desktop binary with platform suffix
+        if: matrix.type == 'desktop'
+        shell: bash
+        run: |
+          version="dev"
+          if [ "${{ matrix.target }}" = "windows" ]; then
+            file=$(find composeApp/build/compose/binaries/main/msi -name "*.msi" | head -1)
+          else
+            file=$(find ${{ matrix.artifact_directory }} -name "*.${{ matrix.artifact_extension }}" | head -1)
+          fi
+          if [ -n "$file" ]; then
+            filename=$(basename "$file")
+            dirname=$(dirname "$file")
+            new_name="AttoCashWallet-${{ matrix.target }}-${version}.${{ matrix.artifact_extension }}"
+            mv "$file" "$dirname/$new_name"
+          fi
+
+      - name: Upload desktop artifact
+        if: matrix.type == 'desktop'
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ matrix.target }}
+          path: ${{ matrix.artifact_directory }}/AttoCashWallet-${{ matrix.target }}-dev.${{ matrix.artifact_extension }}
+
+      - name: Build web distribution
+        if: matrix.type == 'web'
+        run: ./gradlew wasmJsBrowserDistribution
+
+      - name: Create WASM archive
+        if: matrix.type == 'web'
+        run: |
+          version="dev"
+          cd composeApp/build/dist/wasmJs/productionExecutable
+          tar -czf "../../../../AttoCashWallet-web-${version}.tar.gz" .
+
+      - name: Upload web artifact
+        if: matrix.type == 'web'
+        uses: actions/upload-artifact@v5
+        with:
+          name: web
+          path: composeApp/build/dist/wasmJs/productionExecutable
+
+      - name: Upload WASM archive
+        if: matrix.type == 'web'
+        uses: actions/upload-artifact@v5
+        with:
+          name: web-archive
+          path: composeApp/build/AttoCashWallet-web-dev.tar.gz
+
+      - name: Prepare GitHub Pages artifact
+        if: matrix.type == 'web'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: composeApp/build/dist/wasmJs/productionExecutable
 
   build-android:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
     permissions:
       contents: read
-    uses: ./.github/workflows/android-build.yaml
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v4
+        with:
+          sdk-version: '35'
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Extract Version
+        id: get-version
+        run: |
+          ANDROID_VERSION=$(grep -oP 'versionName = "\K[^"]+' composeApp/build.gradle.kts)
+          PACKAGE_VERSION=$(grep -oP 'packageVersion = "\K[^"]+' composeApp/build.gradle.kts)
+          echo "Android version: $ANDROID_VERSION"
+          echo "Package version: $PACKAGE_VERSION"
+          echo "android-version=$ANDROID_VERSION" >> $GITHUB_ENV
+          echo "package-version=$PACKAGE_VERSION" >> $GITHUB_ENV
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > composeApp/release.keystore
+
+      - name: Export Signing Environment Variables
+        run: |
+          cat <<'EOF' >> $GITHUB_ENV
+          ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD }}
+          EOF
+
+      - name: Run Android Build and Tests
+        run: |
+          ./gradlew :composeApp:clean :composeApp:assembleDebug :composeApp:assembleRelease :composeApp:bundleRelease
+
+      - name: Run Android Instrumented Tests
+        if: always()
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          script: ./gradlew :composeApp:connectedDebugAndroidTest
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v5
+        with:
+          name: android-apk-${{ env.android-version }}
+          path: composeApp/build/outputs/apk/release/*.apk
+          retention-days: 7
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v5
+        with:
+          name: android-aab-${{ env.android-version }}
+          path: composeApp/build/outputs/bundle/release/*.aab
+          retention-days: 7
+
+      - name: Upload Mapping File
+        uses: actions/upload-artifact@v5
+        with:
+          name: android-mapping-${{ env.android-version }}
+          path: composeApp/build/outputs/mapping/release/mapping.txt
+          retention-days: 7
+
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v5
+        with:
+          name: android-test-reports-${{ env.android-version }}
+          path: |
+            composeApp/build/reports/tests/
+            composeApp/build/test-results/
+          retention-days: 7

@@ -7,17 +7,102 @@ on:
 
 jobs:
   build:
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    uses: ./.github/workflows/build.yaml
+    strategy:
+      matrix:
+        include:
+          - target: linux
+            type: desktop
+            runner: ubuntu-latest
+            package_task: packageDeb
+            artifact_directory: composeApp/build/compose/binaries/main/deb
+            artifact_extension: deb
+          - target: macos
+            type: desktop
+            runner: macos-latest
+            package_task: packageDmg
+            artifact_directory: composeApp/build/compose/binaries/main/dmg
+            artifact_extension: dmg
+          - target: windows
+            type: desktop
+            runner: windows-latest
+            package_task: packageMsi
+            artifact_directory: composeApp/build/compose/binaries/main/msi
+            artifact_extension: msi
+          - target: web
+            type: web
+            runner: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
 
-  build-android:
-    permissions:
-      contents: read
-    uses: ./.github/workflows/android-build.yaml
-    secrets: inherit
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - run: ./gradlew allTests
+
+      - name: Build desktop package
+        if: matrix.type == 'desktop'
+        run: ./gradlew ${{ matrix.package_task }}
+
+      - name: Rename desktop binary with platform suffix
+        if: matrix.type == 'desktop'
+        shell: bash
+        run: |
+          version="dev"
+          if [ "${{ matrix.target }}" = "windows" ]; then
+            file=$(find composeApp/build/compose/binaries/main/msi -name "*.msi" | head -1)
+          else
+            file=$(find ${{ matrix.artifact_directory }} -name "*.${{ matrix.artifact_extension }}" | head -1)
+          fi
+          if [ -n "$file" ]; then
+            filename=$(basename "$file")
+            dirname=$(dirname "$file")
+            new_name="AttoCashWallet-${{ matrix.target }}-${version}.${{ matrix.artifact_extension }}"
+            mv "$file" "$dirname/$new_name"
+          fi
+
+      - name: Upload desktop artifact
+        if: matrix.type == 'desktop'
+        uses: actions/upload-artifact@v5
+        with:
+          name: ${{ matrix.target }}
+          path: ${{ matrix.artifact_directory }}/AttoCashWallet-${{ matrix.target }}-dev.${{ matrix.artifact_extension }}
+
+      - name: Build web distribution
+        if: matrix.type == 'web'
+        run: ./gradlew wasmJsBrowserDistribution
+
+      - name: Create WASM archive
+        if: matrix.type == 'web'
+        run: |
+          version="dev"
+          cd composeApp/build/dist/wasmJs/productionExecutable
+          tar -czf "../../../../AttoCashWallet-web-${version}.tar.gz" .
+
+      - name: Upload web artifact
+        if: matrix.type == 'web'
+        uses: actions/upload-artifact@v5
+        with:
+          name: web
+          path: composeApp/build/dist/wasmJs/productionExecutable
+
+      - name: Upload WASM archive
+        if: matrix.type == 'web'
+        uses: actions/upload-artifact@v5
+        with:
+          name: web-archive
+          path: composeApp/build/AttoCashWallet-web-dev.tar.gz
+
+      - name: Prepare GitHub Pages artifact
+        if: matrix.type == 'web'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: composeApp/build/dist/wasmJs/productionExecutable
 
   deploy-web:
     environment:
