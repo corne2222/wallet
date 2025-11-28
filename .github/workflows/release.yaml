@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: 'Web deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+      version:
+        description: 'Version string (auto-detected from tag if not provided)'
+        required: false
+        type: string
+
+jobs:
+  build:
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/build.yaml
+    with:
+      version: ${{ inputs.version || github.ref_name }}
+
+  build-android:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/android-build.yaml
+
+  release:
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+    needs:
+      - build
+      - build-android
+    outputs:
+      release_url: ${{ steps.create-release.outputs.url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Extract Version
+        id: get-version
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          fi
+          echo "Version found: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_ENV
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v6
+        with:
+          path: artifacts
+
+      - name: Generate SHA256SUMS
+        run: |
+          cd artifacts
+          find . -type f \( -name "*.deb" -o -name "*.dmg" -o -name "*.msi" -o -name "*.apk" -o -name "*.aab" -o -name "*.tar.gz" \) -exec sha256sum {} \; > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        id: create-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ env.version }}
+          body: |
+            Changelog for release ${{ env.version }}
+            
+            ## Downloads
+            - **Linux**: AttoCashWallet-linux-${{ env.version }}.deb
+            - **macOS**: AttoCashWallet-macos-${{ env.version }}.dmg
+            - **Windows**: AttoCashWallet-windows-${{ env.version }}.msi
+            - **Android APK**: Download from artifacts below
+            - **Android AAB**: Download from artifacts below
+            - **Web**: AttoCashWallet-web-${{ env.version }}.tar.gz
+            
+            ## Verification
+            All binaries are verified with SHA256 checksums in SHA256SUMS.txt.
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/linux/*.deb
+            artifacts/macos/*.dmg
+            artifacts/windows/*.msi
+            artifacts/android-apk-*/**/*.apk
+            artifacts/android-aab-*/**/*.aab
+            artifacts/**/AttoCashWallet-web-*.tar.gz
+            artifacts/**/SHA256SUMS.txt
+
+  deploy-web:
+    environment:
+      name: ${{ inputs.deploy_environment == 'staging' && 'github-pages-staging' || 'github-pages' }}
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

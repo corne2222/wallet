@@ -2,10 +2,37 @@
 
 on:
   workflow_call:
+    inputs:
+      version:
+        description: 'Version string for artifact naming'
+        required: false
+        type: string
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build-desktop:
+    strategy:
+      matrix:
+        os: [linux, macos, windows]
+        include:
+          - os: linux
+            runner: ubuntu-latest
+            package_task: packageDeb
+            artifact_path: composeApp/build/compose/binaries/main/deb/*.deb
+            artifact_extension: deb
+            upload_path: composeApp/build/compose/binaries/main/deb/AttoCashWallet-linux-${{ inputs.version || 'dev' }}.deb
+          - os: macos
+            runner: macos-latest
+            package_task: packageDmg
+            artifact_path: composeApp/build/compose/binaries/main/dmg/*.dmg
+            artifact_extension: dmg
+            upload_path: composeApp/build/compose/binaries/main/dmg/AttoCashWallet-macos-${{ inputs.version || 'dev' }}.dmg
+          - os: windows
+            runner: windows-latest
+            package_task: packageMsi
+            artifact_path: composeApp/build/compose/binaries/main/msi/*.msi
+            artifact_extension: msi
+            upload_path: composeApp/build/compose/binaries/main/msi/AttoCashWallet-windows-${{ inputs.version || 'dev' }}.msi
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v5
 
@@ -19,71 +46,28 @@ jobs:
 
       - run: ./gradlew allTests
 
-      - run: ./gradlew packageDeb
+      - run: ./gradlew ${{ matrix.package_task }}
 
-      - name: Rename binary with platform suffix
+      - name: Rename binary with platform and version suffix
+        shell: bash
         run: |
-          file=$(ls composeApp/build/compose/binaries/main/deb/*.deb)
-          mv "$file" "${file%.deb}-Debian.deb"
+          version="${{ inputs.version || 'dev' }}"
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            file=$(find composeApp/build/compose/binaries/main/msi -name "*.msi" | head -1)
+          else
+            file=$(find ${{ matrix.artifact_path }} -name "*${{ matrix.artifact_extension }}" | head -1)
+          fi
+          if [ -n "$file" ]; then
+            filename=$(basename "$file")
+            dirname=$(dirname "$file")
+            new_name="AttoCashWallet-${{ matrix.os }}-${version}.${{ matrix.artifact_extension }}"
+            mv "$file" "$dirname/$new_name"
+          fi
 
       - uses: actions/upload-artifact@v5
         with:
-          name: linux
-          path: composeApp/build/compose/binaries/main/deb/*-Debian.deb
-
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
-
-      - uses: gradle/actions/setup-gradle@v5
-
-      - run: ./gradlew allTests
-
-      - run: ./gradlew packageDmg
-
-      - name: Rename binary with platform suffix
-        run: |
-          file=$(ls composeApp/build/compose/binaries/main/dmg/*.dmg)
-          mv "$file" "${file%.dmg}-MacOS.dmg"
-
-      - uses: actions/upload-artifact@v5
-        with:
-          name: macos
-          path: composeApp/build/compose/binaries/main/dmg/*-MacOS.dmg
-
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
-
-      - uses: gradle/actions/setup-gradle@v5
-
-      - run: ./gradlew allTests
-
-      - run: ./gradlew packageMsi
-
-      - name: Rename binary with platform suffix
-        run: |
-          $file = Get-ChildItem -Path composeApp/build/compose/binaries/main/msi/*.msi | Select-Object -First 1
-          Rename-Item -Path $file.FullName -NewName ($file.BaseName + "-Windows" + $file.Extension)
-
-      - uses: actions/upload-artifact@v5
-        with:
-          name: windows
-          path: composeApp/build/compose/binaries/main/msi/*-Windows.msi
+          name: ${{ matrix.os }}
+          path: ${{ matrix.upload_path }}
 
   build-web:
     runs-on: ubuntu-latest
@@ -102,7 +86,23 @@ jobs:
 
       - run: ./gradlew wasmJsBrowserDistribution
 
+      - name: Create WASM archive
+        run: |
+          version="${{ inputs.version || 'dev' }}"
+          cd composeApp/build/dist/wasmJs/productionExecutable
+          tar -czf "../../../../AttoCashWallet-web-${version}.tar.gz" .
+
       - uses: actions/upload-artifact@v5
         with:
           name: web
+          path: composeApp/build/dist/wasmJs/productionExecutable
+
+      - name: Upload WASM archive
+        uses: actions/upload-artifact@v5
+        with:
+          name: web-archive
+          path: composeApp/build/AttoCashWallet-web-${{ inputs.version || 'dev' }}.tar.gz
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
           path: composeApp/build/dist/wasmJs/productionExecutable
