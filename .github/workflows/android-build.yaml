@@ -59,17 +59,13 @@ jobs:
 
       - name: Decode Keystore
         run: |
-          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > composeApp/release.keystore
-          fi
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > composeApp/release.keystore
 
       - name: Export Signing Environment Variables
         run: |
-          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
-            echo "ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD }}" >> $GITHUB_ENV
-            echo "ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS }}" >> $GITHUB_ENV
-            echo "ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD }}" >> $GITHUB_ENV
-          fi
+          echo "ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS }}" >> $GITHUB_ENV
+          echo "ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD }}" >> $GITHUB_ENV
 
       - name: Run Android Build and Tests
         run: |
