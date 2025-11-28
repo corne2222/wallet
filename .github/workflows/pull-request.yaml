@@ -7,6 +7,11 @@ jobs:
   build:
     uses: ./.github/workflows/build.yaml
 
+  build-android:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/android-build.yaml
+
   deploy-web:
     permissions:
       contents: read
@@ -16,6 +21,7 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' }}
     needs:
       - build
+      - build-android
     steps:
       - uses: actions/checkout@v5
 
