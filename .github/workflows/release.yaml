@@ -4,40 +4,201 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
-    inputs:
-      deploy_environment:
-        description: 'Web deployment environment'
-        required: true
-        default: 'production'
-        type: choice
-        options:
-          - production
-          - staging
-      version:
-        description: 'Version string (auto-detected from tag if not provided)'
-        required: false
-        type: string
 
 jobs:
-  build:
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    uses: ./.github/workflows/build.yaml
-    with:
-      version: ${{ inputs.version || github.ref_name }}
+  build-desktop:
+    strategy:
+      matrix:
+        include:
+          - target: linux
+            runner: ubuntu-latest
+            package_task: packageDeb
+            artifact_directory: composeApp/build/compose/binaries/main/deb
+            artifact_extension: deb
+          - target: macos
+            runner: macos-latest
+            package_task: packageDmg
+            artifact_directory: composeApp/build/compose/binaries/main/dmg
+            artifact_extension: dmg
+          - target: windows
+            runner: windows-latest
+            package_task: packageMsi
+            artifact_directory: composeApp/build/compose/binaries/main/msi
+            artifact_extension: msi
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Extract Version
+        id: get-version
+        shell: bash
+        run: |
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          echo "Version found: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_ENV
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - run: ./gradlew allTests
+
+      - run: ./gradlew ${{ matrix.package_task }}
+
+      - name: Rename binary with platform and version suffix
+        shell: bash
+        run: |
+          version="${{ env.version }}"
+          if [ "${{ matrix.target }}" = "windows" ]; then
+            file=$(find composeApp/build/compose/binaries/main/msi -name "*.msi" | head -1)
+          else
+            file=$(find ${{ matrix.artifact_directory }} -name "*.${{ matrix.artifact_extension }}" | head -1)
+          fi
+          if [ -n "$file" ]; then
+            filename=$(basename "$file")
+            dirname=$(dirname "$file")
+            new_name="AttoCashWallet-${{ matrix.target }}-${version}.${{ matrix.artifact_extension }}"
+            mv "$file" "$dirname/$new_name"
+          fi
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ${{ matrix.target }}
+          path: ${{ matrix.artifact_directory }}/AttoCashWallet-${{ matrix.target }}-${{ env.version }}.${{ matrix.artifact_extension }}
+
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Extract Version
+        id: get-version
+        run: |
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          echo "Version found: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_ENV
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - run: ./gradlew allTests
+
+      - run: ./gradlew wasmJsBrowserDistribution
+
+      - name: Create WASM archive
+        run: |
+          version="${{ env.version }}"
+          cd composeApp/build/dist/wasmJs/productionExecutable
+          tar -czf "../../../../AttoCashWallet-web-${version}.tar.gz" .
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: web
+          path: composeApp/build/dist/wasmJs/productionExecutable
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: web-archive
+          path: composeApp/build/AttoCashWallet-web-${{ env.version }}.tar.gz
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: composeApp/build/dist/wasmJs/productionExecutable
 
   build-android:
+    runs-on: ubuntu-latest
     permissions:
       contents: read
-    uses: ./.github/workflows/android-build.yaml
-    secrets:
-      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-      ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD }}
-      ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS: ${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS }}
-      ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Extract Version
+        id: get-version
+        run: |
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
+          ANDROID_VERSION=$(grep -oP 'versionName = "\K[^"]+' composeApp/build.gradle.kts)
+          PACKAGE_VERSION=$(grep -oP 'packageVersion = "\K[^"]+' composeApp/build.gradle.kts)
+          echo "Version found: $VERSION"
+          echo "Android version: $ANDROID_VERSION"
+          echo "Package version: $PACKAGE_VERSION"
+          echo "version=$VERSION" >> $GITHUB_ENV
+          echo "android-version=$ANDROID_VERSION" >> $GITHUB_ENV
+          echo "package-version=$PACKAGE_VERSION" >> $GITHUB_ENV
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v4
+        with:
+          sdk-version: '35'
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > composeApp/release.keystore
+
+      - name: Export Signing Environment Variables
+        run: |
+          cat <<'EOF' >> $GITHUB_ENV
+          ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD }}
+          EOF
+
+      - name: Run Android Build and Tests
+        run: |
+          ./gradlew :composeApp:clean :composeApp:assembleDebug :composeApp:assembleRelease :composeApp:bundleRelease
+
+      - name: Run Android Instrumented Tests
+        if: always()
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          script: ./gradlew :composeApp:connectedDebugAndroidTest
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v5
+        with:
+          name: android-apk-${{ env.android-version }}
+          path: composeApp/build/outputs/apk/release/*.apk
+          retention-days: 30
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v5
+        with:
+          name: android-aab-${{ env.android-version }}
+          path: composeApp/build/outputs/bundle/release/*.aab
+          retention-days: 30
+
+      - name: Upload Mapping File
+        uses: actions/upload-artifact@v5
+        with:
+          name: android-mapping-${{ env.android-version }}
+          path: composeApp/build/outputs/mapping/release/mapping.txt
+          retention-days: 30
+
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v5
+        with:
+          name: android-test-reports-${{ env.android-version }}
+          path: |
+            composeApp/build/reports/tests/
+            composeApp/build/test-results/
+          retention-days: 30
 
   release:
     runs-on: ubuntu-latest
@@ -45,7 +206,8 @@ jobs:
     permissions:
       contents: write
     needs:
-      - build
+      - build-desktop
+      - build-web
       - build-android
     outputs:
       release_url: ${{ steps.create-release.outputs.url }}
@@ -55,11 +217,7 @@ jobs:
       - name: Extract Version
         id: get-version
         run: |
-          if [ -n "${{ inputs.version }}" ]; then
-            VERSION="${{ inputs.version }}"
-          else
-            VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
-          fi
+          VERSION=$(echo "${{ github.ref_name }}" | sed 's/^v//')
           echo "Version found: $VERSION"
           echo "version=$VERSION" >> $GITHUB_ENV
 
@@ -106,10 +264,10 @@ jobs:
 
   deploy-web:
     environment:
-      name: ${{ inputs.deploy_environment == 'staging' && 'github-pages-staging' || 'github-pages' }}
+      name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    needs: build
+    needs: build-web
     permissions:
       pages: write
       id-token: write

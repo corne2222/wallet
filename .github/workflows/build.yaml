@@ -1,12 +1,12 @@
 # Managed by management-terraform
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       version:
         description: 'Version string for artifact naming'
         required: false
-        type: string
+        default: 'dev'
 
 jobs:
   build-desktop:
