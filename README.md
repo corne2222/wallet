@@ -49,9 +49,11 @@ This project uses GitHub Actions for automated builds and releases. The workflow
 
 For Android builds:
 - `ANDROID_KEYSTORE_BASE64` - Base64-encoded release keystore
-- `ANDROID_KEYSTORE_ALIAS` - Keystore alias
-- `ANDROID_KEYSTORE_PASSWORD` - Keystore password
-- `ANDROID_KEY_PASSWORD` - Key password
+- `ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD` - Keystore password
+- `ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS` - Key alias (use `attocash-release`)
+- `ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD` - Private key password
+
+See [Android Keystore Setup Guide](docs/ANDROID_KEYSTORE_SETUP.md) for detailed instructions and [GitHub Secrets Template](docs/GITHUB_SECRETS_TEMPLATE.md) for a configuration checklist.
 
 For GitHub Pages deployment:
 - Repository permissions: `contents: read`, `pages: write`, `id-token: write`
