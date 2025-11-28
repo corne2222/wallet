@@ -14,6 +14,11 @@ actual class PasswordDataSource {
     actual suspend fun setPassword(seed: String, password: String) {
         savePasswordToKeychain(seed, password)
     }
+
+    actual suspend fun delete(seed: String) {
+        val accountKey = "$getPasswordKey:${seed.hashCode()}"
+        deletePasswordFromKeychain(accountKey)
+    }
     
     private fun getPasswordFromKeychain(seed: String): String? {
         val accountKey = "$getPasswordKey:${seed.hashCode()}"

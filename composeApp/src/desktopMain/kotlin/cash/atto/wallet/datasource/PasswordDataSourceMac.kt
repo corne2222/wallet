@@ -18,4 +18,11 @@ class PasswordDataSourceMac : PasswordDataSourceDesktopImpl {
     override suspend fun setPassword(seed: String, password: String) {
         macCred.storePassword(password)
     }
+
+    override suspend fun delete(seed: String) {
+        try {
+            macCred.deletePassword()
+        } catch (_: Exception) {
+        }
+    }
 }

@@ -1,8 +1,17 @@
 package cash.atto.wallet.datasource
 
-// This is a stub since the class is not used by desktop
+import cash.atto.wallet.PlatformType
+import cash.atto.wallet.getPlatform
+
 actual class SaltDataSource {
-    actual suspend fun get(): String {
-        TODO("Not yet implemented")
+
+    private val dataSourceDesktopImpl = when (getPlatform().type) {
+        PlatformType.WINDOWS -> SaltDataSourceWindows()
+        PlatformType.LINUX -> SaltDataSourceLinux()
+        PlatformType.MACOS -> SaltDataSourceMac()
+        else -> throw UnsupportedOperationException("Unsupported platform ${getPlatform()}")
     }
+
+    actual suspend fun get() =
+        dataSourceDesktopImpl.get()
 }

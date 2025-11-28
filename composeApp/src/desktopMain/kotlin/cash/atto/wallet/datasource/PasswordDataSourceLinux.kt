@@ -15,4 +15,11 @@ class PasswordDataSourceLinux : PasswordDataSourceDesktopImpl {
     override suspend fun setPassword(seed: String, password: String) {
         linuxCred.storePassword(password)
     }
+
+    override suspend fun delete(seed: String) {
+        try {
+            linuxCred.deletePassword()
+        } catch (_: Exception) {
+        }
+    }
 }

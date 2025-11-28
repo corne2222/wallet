@@ -113,6 +113,9 @@ kotlin {
 
             implementation(libs.room.runtime)
             implementation(libs.sqlite.bundled)
+
+            // Biometrics
+            implementation(libs.androidx.biometric)
         }
 
         commonMain.dependencies {
