@@ -11,4 +11,8 @@ actual class PasswordDataSource {
     actual suspend fun setPassword(seed: String, password: String) {
         passwordMap[seed] = password
     }
+
+    actual suspend fun delete(seed: String) {
+        passwordMap.remove(seed)
+    }
 }

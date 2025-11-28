@@ -31,6 +31,7 @@ slf4j = "2.0.17"
 roomCommon = "2.8.0"
 ksp = "2.3.1"
 sqlite = "2.6.0"
+androidx-biometric = "1.2.0"
 
 [libraries]
 accompanist-permissions = { module = "com.google.accompanist:accompanist-permissions", version.ref = "accompanistPermissions" }
@@ -68,6 +69,7 @@ room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "
 room-runtime-android = { group = "androidx.room", name = "room-runtime-android", version.ref = "roomCommon" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "roomCommon" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
+androidx-biometric = { group = "androidx.biometric", name = "biometric", version.ref = "androidx-biometric" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

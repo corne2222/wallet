@@ -17,4 +17,7 @@ actual class PasswordDataSource {
 
     actual suspend fun setPassword(seed: String, password: String) =
         dataSourceDesktopImpl.setPassword(seed, password)
+
+    actual suspend fun delete(seed: String) =
+        dataSourceDesktopImpl.delete(seed)
 }

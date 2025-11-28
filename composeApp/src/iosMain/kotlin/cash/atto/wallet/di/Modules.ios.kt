@@ -8,6 +8,8 @@ import cash.atto.wallet.datasource.PasswordDataSource
 import cash.atto.wallet.datasource.SaltDataSource
 import cash.atto.wallet.datasource.SeedDataSource
 import cash.atto.wallet.interactor.SeedAESInteractor
+import cash.atto.wallet.interactor.BiometricUnlockManager
+import cash.atto.wallet.interactor.PasswordHasher
 import kotlinx.coroutines.Dispatchers
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.module
@@ -35,4 +37,6 @@ actual val dataSourceModule = module {
     singleOf(::SeedAESInteractor)
     singleOf(::SaltDataSource)
     singleOf(::SeedDataSource)
+    singleOf(::BiometricUnlockManager)
+    singleOf(::PasswordHasher)
 }

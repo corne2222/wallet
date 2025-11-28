@@ -73,6 +73,15 @@ actual class PasswordDataSource(
         }
     }
 
+    actual suspend fun delete(seed: String) {
+        val encryptedSeed = encryptSeed(seed)
+        val key = stringPreferencesKey("$PASSWORD_KEY${encryptedSeed}")
+        
+        dataStore.edit { preferences ->
+            preferences.remove(key)
+        }
+    }
+
     suspend fun clear() {
         dataStore.edit { it.clear() }
     }

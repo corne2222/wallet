@@ -17,6 +17,14 @@ class PasswordDataSourceWindows : PasswordDataSourceDesktopImpl {
         removeLegacyCredential(seed)
     }
 
+    override suspend fun delete(seed: String) {
+        try {
+            winCred.deleteCredential(credentialKey(seed, APP_NAME))
+        } catch (_: Exception) {
+        }
+        removeLegacyCredential(seed)
+    }
+
     private fun readCredential(seed: String, appName: String): String? = try {
         winCred
             .getCredential(credentialKey(seed, appName))

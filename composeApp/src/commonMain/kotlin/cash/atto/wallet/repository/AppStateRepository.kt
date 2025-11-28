@@ -152,6 +152,10 @@ class AppStateRepository(
     }
 
     suspend fun deleteKeys() {
+        state.value.mnemonic?.let {
+            val seed = it.words.joinToString(" ")
+            passwordDataSource.delete(seed)
+        }
         seedDataSource.clearSeed()
     }
 
