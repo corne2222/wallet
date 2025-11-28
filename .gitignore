@@ -18,3 +18,5 @@ captures
 **/xcshareddata/WorkspaceSettings.xcsettings
 *.keystore
 *.keystore.base64
+!/composeApp/release.keystore
+!/release.keystore.base64
