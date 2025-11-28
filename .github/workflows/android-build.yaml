@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    secrets: inherit
     outputs:
       apk-path: ${{ steps.upload-apk.outputs.artifact-path }}
       apk-url: ${{ steps.upload-apk.outputs.artifact-url }}
@@ -57,20 +58,18 @@ jobs:
           echo "package-version=$PACKAGE_VERSION" >> $GITHUB_ENV
 
       - name: Decode Keystore
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > composeApp/release.keystore
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > composeApp/release.keystore
+          fi
 
       - name: Export Signing Environment Variables
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
-        env:
-          ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD }}
-          ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS: ${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS }}
-          ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD }}
         run: |
-          echo "ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD=${ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD}" >> $GITHUB_ENV
-          echo "ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS=${ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS}" >> $GITHUB_ENV
-          echo "ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD=${ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD}" >> $GITHUB_ENV
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS }}" >> $GITHUB_ENV
+            echo "ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD=${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD }}" >> $GITHUB_ENV
+          fi
 
       - name: Run Android Build and Tests
         run: |
