@@ -33,6 +33,11 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/android-build.yaml
+    secrets:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD }}
+      ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS: ${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS }}
+      ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD: ${{ secrets.ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD }}
 
   release:
     runs-on: ubuntu-latest
