@@ -32,6 +32,17 @@ kotlin {
 
     jvm("desktop")
 
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "ComposeApp"
+            isStatic = true
+        }
+    }
+
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
         outputModuleName.set("attoCashWallet")
@@ -58,12 +69,21 @@ kotlin {
         val androidInstrumentedTest by getting
         val commonMain by getting
         val androidMain by getting
+        val iosMain by getting
+        val iosX64Main by getting
+        val iosArm64Main by getting
+        val iosSimulatorArm64Main by getting
 
         val jvmMain by creating {
             dependsOn(commonMain)
         }
         androidMain.dependsOn(jvmMain)
         desktopMain.dependsOn(jvmMain)
+        
+        iosMain.dependsOn(commonMain)
+        iosX64Main.dependsOn(iosMain)
+        iosArm64Main.dependsOn(iosMain)
+        iosSimulatorArm64Main.dependsOn(iosMain)
 
         androidMain.dependencies {
             implementation(compose.preview)
@@ -139,6 +159,17 @@ kotlin {
         }
         wasmJsMain.dependencies {
             implementation("org.jetbrains.kotlinx:kotlinx-browser:0.5.0")
+        }
+        
+        iosMain.dependencies {
+            implementation(compose.runtime)
+            implementation(compose.foundation)
+            implementation(compose.material3)
+            implementation(compose.ui)
+            implementation(compose.components.resources)
+            
+            implementation(libs.room.runtime)
+            implementation(libs.sqlite.bundled)
         }
     }
 
@@ -264,5 +295,31 @@ afterEvaluate {
 
     kspAndroidTasks.configureEach {
         dependsOn(composeResourceGenerators)
+    }
+}
+
+// Task to pack all iOS frameworks into a single XCFramework
+tasks.register("packComposeAppXCFramework") {
+    group = "build"
+    description = "Pack all iOS frameworks into a single XCFramework"
+    
+    dependsOn(":composeApp:iosX64Binaries")
+    dependsOn(":composeApp:iosArm64Binaries")
+    dependsOn(":composeApp:iosSimulatorArm64Binaries")
+    
+    doLast {
+        val frameworksDir = File(project.buildDir, "bin/iosX64ReleaseFramework")
+        val xcFrameworkDir = File(project.buildDir, "outputs/XCFramework")
+        
+        exec {
+            commandLine(
+                "xcodebuild",
+                "-create-xcframework",
+                "-framework", "${frameworksDir.absolutePath}/ComposeApp.framework",
+                "-framework", "${project.buildDir.absolutePath}/bin/iosArm64ReleaseFramework/ComposeApp.framework",
+                "-framework", "${project.buildDir.absolutePath}/bin/iosSimulatorArm64ReleaseFramework/ComposeApp.framework",
+                "-output", "${xcFrameworkDir.absolutePath}/ComposeApp.xcframework"
+            )
+        }
     }
 }
