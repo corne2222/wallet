@@ -1,8 +1,12 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.tasks.TaskAction
+import org.gradle.process.ExecOperations
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 import java.nio.charset.StandardCharsets
+import javax.inject.Inject
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -50,7 +54,7 @@ kotlin {
             commonWebpackConfig {
                 outputFileName = "attoCashWallet.js"
                 devServer = (devServer ?: KotlinWebpackConfig.DevServer()).apply {
-                    static = (static ?: mutableListOf()).apply {
+                    static {
                         // Serve sources to debug inside browser
                         add(project.rootDir.path)
                         add(project.projectDir.path)
@@ -223,8 +227,10 @@ android {
         getByName("release") {
             isMinifyEnabled = false
             
-            if (signingConfigs.getByName("release").storeFile != null && signingConfigs.getByName("release").storeFile.exists()) {
-                signingConfig = signingConfigs.getByName("release")
+            val releaseSigningConfig = signingConfigs.getByName("release")
+            val storeFile = releaseSigningConfig.storeFile
+            if (storeFile != null && storeFile.exists()) {
+                signingConfig = releaseSigningConfig
             }
         }
     }
@@ -305,27 +311,38 @@ afterEvaluate {
 }
 
 // Task to pack all iOS frameworks into a single XCFramework
-tasks.register("packComposeAppXCFramework") {
+abstract class PackComposeAppXCFrameworkTask : DefaultTask() {
+    @get:Inject
+    abstract val execOperations: ExecOperations
+
+    @TaskAction
+    fun packFrameworks() {
+        val buildDir = project.layout.buildDirectory.get().asFile
+        val iosX64Framework = buildDir.resolve("bin/iosX64ReleaseFramework/ComposeApp.framework")
+        val iosArm64Framework = buildDir.resolve("bin/iosArm64ReleaseFramework/ComposeApp.framework")
+        val iosSimulatorArm64Framework = buildDir.resolve("bin/iosSimulatorArm64ReleaseFramework/ComposeApp.framework")
+        val xcFrameworkOutput = buildDir.resolve("outputs/XCFramework/ComposeApp.xcframework")
+
+        xcFrameworkOutput.parentFile?.mkdirs()
+
+        execOperations.exec {
+            commandLine(
+                "xcodebuild",
+                "-create-xcframework",
+                "-framework", iosX64Framework.absolutePath,
+                "-framework", iosArm64Framework.absolutePath,
+                "-framework", iosSimulatorArm64Framework.absolutePath,
+                "-output", xcFrameworkOutput.absolutePath
+            )
+        }
+    }
+}
+
+tasks.register<PackComposeAppXCFrameworkTask>("packComposeAppXCFramework") {
     group = "build"
     description = "Pack all iOS frameworks into a single XCFramework"
     
     dependsOn(":composeApp:iosX64Binaries")
     dependsOn(":composeApp:iosArm64Binaries")
     dependsOn(":composeApp:iosSimulatorArm64Binaries")
-    
-    doLast {
-        val frameworksDir = File(project.buildDir, "bin/iosX64ReleaseFramework")
-        val xcFrameworkDir = File(project.buildDir, "outputs/XCFramework")
-        
-        exec {
-            commandLine(
-                "xcodebuild",
-                "-create-xcframework",
-                "-framework", "${frameworksDir.absolutePath}/ComposeApp.framework",
-                "-framework", "${project.buildDir.absolutePath}/bin/iosArm64ReleaseFramework/ComposeApp.framework",
-                "-framework", "${project.buildDir.absolutePath}/bin/iosSimulatorArm64ReleaseFramework/ComposeApp.framework",
-                "-output", "${xcFrameworkDir.absolutePath}/ComposeApp.xcframework"
-            )
-        }
-    }
 }
