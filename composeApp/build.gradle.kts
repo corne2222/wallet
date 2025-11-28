@@ -169,9 +169,26 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    
+    // Configure signing if keystore environment variables are available
+    signingConfigs {
+        create("release") {
+            if (System.getenv("ORG_GRADLE_PROJECT_RELEASE_KEYSTORE_ALIAS") != null) {
+                storeFile = file("release.keystore")
+                storePassword = System.getenv("ORG_GRADLE_PROJECT_RELEASE_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ORG_GRADLE_PROJECT_RELEASE_KEYSTORE_ALIAS")
+                keyPassword = System.getenv("ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+    
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+            
+            if (signingConfigs.getByName("release").storeFile != null && signingConfigs.getByName("release").storeFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {
