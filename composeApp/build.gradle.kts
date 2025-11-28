@@ -207,11 +207,14 @@ android {
     // Configure signing if keystore environment variables are available
     signingConfigs {
         create("release") {
-            if (System.getenv("ORG_GRADLE_PROJECT_RELEASE_KEYSTORE_ALIAS") != null) {
+            val storePassword = System.getenv("ORG_GRADLE_PROJECT_RELEASE_STORE_PASSWORD")
+            val keyAlias = System.getenv("ORG_GRADLE_PROJECT_RELEASE_KEY_ALIAS")
+            val keyPassword = System.getenv("ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD")
+            if (!storePassword.isNullOrBlank() && !keyAlias.isNullOrBlank() && !keyPassword.isNullOrBlank()) {
                 storeFile = file("release.keystore")
-                storePassword = System.getenv("ORG_GRADLE_PROJECT_RELEASE_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("ORG_GRADLE_PROJECT_RELEASE_KEYSTORE_ALIAS")
-                keyPassword = System.getenv("ORG_GRADLE_PROJECT_RELEASE_KEY_PASSWORD")
+                this.storePassword = storePassword
+                this.keyAlias = keyAlias
+                this.keyPassword = keyPassword
             }
         }
     }
